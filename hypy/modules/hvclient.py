@@ -27,7 +27,8 @@ def connect(vm_id: str, vm_name: str, vm_index: str):
     passw = config['pass']
     host = config['host']
 
-    if platform.uname()[0] == "Windows":
+    is_windows = platform.uname()[0] == "Windows"
+    if is_windows:
         freerdp_bin = "wfreerdp.exe"
     else:
         freerdp_bin = "xfreerdp"
@@ -38,6 +39,9 @@ def connect(vm_id: str, vm_name: str, vm_index: str):
                         '/p:{}'.format(passw),
                         '/t:{} [{}] {}'.format(host, vm_index, vm_name),
                         '/cert-ignore']
+
+    if not is_windows:
+        cmd.append('/smart-sizing')
 
     try:
         handle = Popen(cmd, stdout=DEVNULL, stderr=PIPE)

@@ -91,5 +91,20 @@ Commands:
 If you need help on any subcommand, run `hypy.py COMMAND --help`.
 Further details on subcommands: https://github.com/avanzzzi/hypy/wiki
 
+## Window resizing on Linux/Mac
+On Linux and Mac, hypy passes `/smart-sizing` to xfreerdp, so the VM window can be freely resized. The image will scale to fit the window without black areas.
+
+For **true dynamic resolution** (the VM display actually changes resolution to match the window size), Hyper-V Enhanced Session must be enabled on the host. Run the following on the Windows Hyper-V host as Administrator:
+
+```powershell
+Set-VMHost -EnableEnhancedSessionMode $true
+# or
+Set-VM -VMName "YourVMName" -EnhancedSessionTransportType HvSocket
+```
+
+> **Note:** Linux guest VMs also require `xrdp` installed inside the VM to support Enhanced Session.
+
+Once Enhanced Session is active, replace `/smart-sizing` with `/dynamic-resolution` in `hypy/modules/hvclient.py` for the best experience.
+
 ## tests
 A tox.ini file is included for execution of style check and unit tests.
