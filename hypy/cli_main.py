@@ -34,7 +34,7 @@ def show_status(ctx, by_name, ident):
     vms = hvclient.parse_result(rs)
     cache.update_cache(vms)
     cache_vms = cache.list_vms()
-    printer.print_list_vms(cache_vms, name)
+    printer.print_list_vms(cache_vms, name, show_ip=False)
     rs_snaps = hvclient.list_vm_snaps(name)
     snaps = hvclient.parse_result(rs_snaps)
     printer.print_vm_snaps(snaps, name, vms['ParentSnapshotName'])
@@ -45,24 +45,28 @@ def show_status(ctx, by_name, ident):
               help='Syncronize with server updating local cache')
 @click.option('--name', '-n', help='Filter virtual machines by name')
 @click.option('--rem', '-r', is_flag=True, default=False, help='Remove old cache before sync')
-def list_vms(sync, name, rem):
+@click.option('--ip', '-i', is_flag=True, default=False, help='Show IP addresses')
+def list_vms(sync, name, rem, ip):
     remove_old_cache = rem or cache.need_update()
     if sync or remove_old_cache:
         rs = hvclient.get_vm(name)
         vms = hvclient.parse_result(rs)
+        if ip:
+            vms = hvclient.add_ip_addresses(vms)
         if remove_old_cache:
             cache.remove_cache()
         cache.update_cache(vms)
     cache_vms = cache.list_vms()
-    printer.print_list_vms(cache_vms, name)
+    printer.print_list_vms(cache_vms, name, show_ip=ip)
 
 
 @cli.command("ls", help='List updated virtual machines and its indexes')
 @click.option('--name', '-n', help='Filter virtual machines by name')
 @click.option('--rem', '-r', is_flag=True, default=False, help='Remove old cache before sync')
+@click.option('--ip', '-i', is_flag=True, default=False, help='Show IP addresses')
 @click.pass_context
-def ls(ctx, name, rem):
-    ctx.invoke(list_vms, sync=True, name=name, rem=rem)
+def ls(ctx, name, rem, ip):
+    ctx.invoke(list_vms, sync=True, name=name, rem=rem, ip=ip)
 
 
 @cli.command(help="Connect to virtual machine identified by index")

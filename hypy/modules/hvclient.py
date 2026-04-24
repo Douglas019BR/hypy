@@ -3,6 +3,7 @@ import platform
 from base64 import b64encode, b64decode
 from collections import namedtuple
 from subprocess import DEVNULL, PIPE, Popen, TimeoutExpired
+from typing import Optional
 
 from paramiko import AutoAddPolicy, SSHClient
 from winrm import Protocol, Response
@@ -12,6 +13,8 @@ config = None
 SNAP_TYPES = {'standard': 5,
               'production': 3,
               'productiononly': 4}
+
+IPV4_LINK_LOCAL_PREFIX = '169.254.'
 
 
 def connect(vm_id: str, vm_name: str, vm_index: str):
@@ -317,6 +320,92 @@ def set_switch(vm_name: str, switch_name: str) -> Response:
     rs = run_ps(ps_script)
 
     return rs
+
+
+def _select_primary_ip(ip_addresses) -> Optional[str]:
+    """
+    Select the primary IP address from a list of IP addresses.
+
+    Strategy:
+    1. Prefer non-link-local IPv4 addresses (not 169.254.x.x)
+    2. Fall back to any available IP if no standard IPv4 found
+    3. Return None if no addresses available
+
+    Args:
+        ip_addresses: List of IP addresses or single IP address string.
+    Returns:
+        Selected IP address string or None.
+    """
+    if not ip_addresses:
+        return None
+
+    if isinstance(ip_addresses, str):
+        return ip_addresses
+
+    if isinstance(ip_addresses, list):
+        ipv4_addrs = [ip for ip in ip_addresses
+                      if ':' not in ip and not ip.startswith(IPV4_LINK_LOCAL_PREFIX)]
+        if ipv4_addrs:
+            return ipv4_addrs[0]
+        # Fallback to first available IP
+        return ip_addresses[0] if ip_addresses else None
+
+    return None
+
+
+def _get_all_vm_ip_addresses() -> Response:
+    """
+    Retrieve IP addresses for all VMs in a single batch call.
+
+    Returns:
+        Info obtained from remote hyper-v host containing VMName and IPAddresses.
+    """
+    ps_script = 'Get-VMNetworkAdapter -VMName * | Select VMName, IPAddresses | ConvertTo-Json'
+    rs = run_ps(ps_script)
+    return rs
+
+
+def add_ip_addresses(vms_json: dict) -> dict:
+    """
+    Add IP addresses to VM information by fetching all IPs in one batch call.
+
+    Args:
+        vms_json: Dict or list of VMs from get_vm().
+    Returns:
+        Same structure with IPAddress field added to each VM.
+    """
+    if isinstance(vms_json, dict):
+        vms_json = [vms_json]
+
+    for vm in vms_json:
+        vm['IPAddress'] = None
+
+    try:
+        rs = _get_all_vm_ip_addresses()
+        adapters = parse_result(rs)
+
+        if adapters and isinstance(adapters, dict):
+            adapters = [adapters]
+
+        ip_map = {}
+        if adapters:
+            for adapter in adapters:
+                vm_name = adapter.get('VMName')
+                ip_addresses = adapter.get('IPAddresses')
+
+                if vm_name and ip_addresses:
+                    ip_map[vm_name] = _select_primary_ip(ip_addresses)
+
+        for vm in vms_json:
+            if vm['Name'] in ip_map:
+                vm['IPAddress'] = ip_map[vm['Name']]
+
+    except Exception:
+        # If batch call fails, VMs already have IPAddress = None from initialization
+        # and hypy will not crash
+        pass
+
+    return vms_json
 
 
 def run_ps(ps: str) -> Response:

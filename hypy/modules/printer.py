@@ -12,7 +12,8 @@ STATES = {3: 'off',
           6: 'saved'}
 ADJ = {'index': 3,
        'state': 7,
-       'name': 30}
+       'name': 30,
+       'ip': 15}
 
 
 def print_vm_switch(switch_json: dict):
@@ -71,7 +72,7 @@ def print_vm_snaps(snaps_json: dict, vm_name: str, current_snap: str):
         print("{} has no snapshots".format(vm_name))
 
 
-def print_list_vms(vms_json: dict, filter_vms: str):
+def print_list_vms(vms_json: dict, filter_vms: str, show_ip: bool = False):
     """
     Print list of virtual machines.
 
@@ -79,15 +80,19 @@ def print_list_vms(vms_json: dict, filter_vms: str):
         vms_json: Dict containing the table of vms.
         filter_vms: Filter to be applied at the output. Only the vms whose name
             matches the filter will be shown.
+        show_ip: Whether to show IP addresses column.
     """
     # Listing
     # print("-- Hyper-V Virtual Machine Listing --")
 
     # Header
-    print("{} {} {} {}".format("Index".rjust(ADJ['index']),
+    header = "{} {} {}".format("Index".rjust(ADJ['index']),
                                "State".ljust(ADJ['state']),
-                               "Name".ljust(ADJ['name']),
-                               "Uptime"))
+                               "Name".ljust(ADJ['name']))
+    if show_ip:
+        header += " {}".format("IP Address".ljust(ADJ['ip']))
+    header += " Uptime"
+    print(header)
 
     if filter_vms:
         vms_show = [vm for vm in vms_json if fnmatch(vm['Name'], filter_vms)]
@@ -99,5 +104,16 @@ def print_list_vms(vms_json: dict, filter_vms: str):
         index = str(vms_json.index(vm)).rjust(ADJ['index'])
         state = STATES.get(vm['State'], "unknown").ljust(ADJ['state'])
         name = str(vm['Name']).ljust(ADJ['name'])
+
+        row = "[{}] {} {}".format(index, state, name)
+
+        if show_ip:
+            ip_addr = vm.get('IPAddress', 'N/A')
+            if ip_addr is None:
+                ip_addr = 'N/A'
+            row += " {}".format(str(ip_addr).ljust(ADJ['ip']))
+
         uptime = str(timedelta(hours=vm['Uptime']['TotalHours']))
-        print("[{}] {} {} {}".format(index, state, name, uptime))
+        row += " {}".format(uptime)
+
+        print(row)

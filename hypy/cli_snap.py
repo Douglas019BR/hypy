@@ -18,7 +18,7 @@ def snap_ls(by_name, ident):
     vms = hvclient.parse_result(rs)
     cache.update_cache(vms)
     cache_vms = cache.list_vms()
-    printer.print_list_vms(cache_vms, name)
+    printer.print_list_vms(cache_vms, name, show_ip=False)
     rs_snaps = hvclient.list_vm_snaps(name)
     snaps = hvclient.parse_result(rs_snaps)
     printer.print_vm_snaps(snaps, name, vms['ParentSnapshotName'])
