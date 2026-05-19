@@ -28,7 +28,11 @@ def connect(vm_id: str, vm_name: str, vm_index: str):
     """
     user = config['user']
     passw = config['pass']
+    domain = config['domain']
     host = config['host']
+
+    if isinstance(passw, bytes):
+        passw = passw.decode('utf-8')
 
     is_windows = platform.uname()[0] == "Windows"
     if is_windows:
@@ -38,7 +42,7 @@ def connect(vm_id: str, vm_name: str, vm_index: str):
 
     cmd = [freerdp_bin, '/v:{}'.format(host),
                         '/vmconnect:{}'.format(vm_id),
-                        '/u:{}'.format(user),
+                        '/u:{}'.format(r'{}\{}'.format(domain, user)),
                         '/p:{}'.format(passw),
                         '/t:{} [{}] {}'.format(host, vm_index, vm_name),
                         '/cert:ignore']
