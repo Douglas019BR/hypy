@@ -24,7 +24,7 @@ def connect(vm_id: str, vm_name: str, vm_index: str):
         vm_index: Index of the vm in the cache file.
     """
     user = config['user']
-    passw = b64decode(config['pass'])
+    passw = config['pass']
     host = config['host']
 
     if platform.uname()[0] == "Windows":
@@ -350,7 +350,7 @@ def run_cmd_ssh(cmd: str) -> Response:
     ssh_client.load_system_host_keys()
     ssh_client.set_missing_host_key_policy(AutoAddPolicy())
     ssh_client.connect(username=config['user'],
-                       password=b64decode(config['pass']),
+                       password=config['pass'],
                        hostname=config['host'],
                        port=int(config['ssh_port']),
                        allow_agent=False,
@@ -380,7 +380,7 @@ def run_cmd_winrm(cmd: str) -> Response:
                       transport='ntlm',
                       username=r'{}\{}'.format(config['domain'],
                                                config['user']),
-                      password=b64decode(config['pass']),
+                      password=config['pass'],
                       server_cert_validation='ignore')
 
     shell_id = client.open_shell()
