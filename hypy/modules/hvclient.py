@@ -27,20 +27,28 @@ def connect(vm_id: str, vm_name: str, vm_index: str):
         vm_index: Index of the vm in the cache file.
     """
     user = config['user']
-    passw = b64decode(config['pass'])
+    passw = config['pass']
+    domain = config['domain']
     host = config['host']
 
-    if platform.uname()[0] == "Windows":
+    if isinstance(passw, bytes):
+        passw = passw.decode('utf-8')
+
+    is_windows = platform.uname()[0] == "Windows"
+    if is_windows:
         freerdp_bin = "wfreerdp.exe"
     else:
         freerdp_bin = "xfreerdp"
 
     cmd = [freerdp_bin, '/v:{}'.format(host),
                         '/vmconnect:{}'.format(vm_id),
-                        '/u:{}'.format(user),
+                        '/u:{}'.format(r'{}\{}'.format(domain, user)),
                         '/p:{}'.format(passw),
                         '/t:{} [{}] {}'.format(host, vm_index, vm_name),
                         '/cert:ignore']
+
+    if not is_windows:
+        cmd.append('/smart-sizing')
 
     try:
         handle = Popen(cmd, stdout=DEVNULL, stderr=PIPE)
@@ -439,7 +447,7 @@ def run_cmd_ssh(cmd: str) -> Response:
     ssh_client.load_system_host_keys()
     ssh_client.set_missing_host_key_policy(AutoAddPolicy())
     ssh_client.connect(username=config['user'],
-                       password=b64decode(config['pass']),
+                       password=config['pass'],
                        hostname=config['host'],
                        port=int(config['ssh_port']),
                        allow_agent=False,
@@ -469,7 +477,7 @@ def run_cmd_winrm(cmd: str) -> Response:
                       transport='ntlm',
                       username=r'{}\{}'.format(config['domain'],
                                                config['user']),
-                      password=b64decode(config['pass']),
+                      password=config['pass'],
                       server_cert_validation='ignore')
 
     shell_id = client.open_shell()
